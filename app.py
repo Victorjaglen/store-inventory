@@ -1,6 +1,7 @@
 from models import (engine, Base, session, Product)
 import datetime
 import csv
+import time
 
 
 def add_csv():
@@ -19,17 +20,37 @@ def add_csv():
         session.commit()
 
 def clean_date(date_str):
-    split_date = date_str.split('/')
-    day = int(split_date[1])
-    month = int(split_date[0])
-    year = int(split_date[2])
-    return datetime.date(year, month, day)
+    try:
+        split_date = date_str.split('/')
+        day = int(split_date[1])
+        month = int(split_date[0])
+        year = int(split_date[2])
+        return_date = datetime.date(year, month, day)
+    except (ValueError, IndexError):
+        input('''
+            \n ****Date ERRROR****
+            \rThe Date format should include a valid Month Day year separated by /
+            \rEx: 12/28/2018 
+            \rPress Enter to try again.
+            \r*************************''')
+        return
+    else:
+        return return_date
     
 
 def clean_price(price_str):
-    split_price = price_str.split('$')
-    price_float = float(split_price[1])
-    return int(price_float * 100)
+    try:
+        split_price = price_str.split('$')
+        price_float = float(split_price[1])
+    except (ValueError, IndexError):
+        input('''
+            \n ****Price ERRROR****
+            \rThe Price should be a number with the currency symbol up front.
+            \rEx: $7.41
+            \rPress Enter to try again.
+            \r*************************''')
+    else:
+        return int(price_float * 100)
 
 def clean_id(id_str, options):
     try:
@@ -79,7 +100,37 @@ def app():
         choice = menu()
         if choice.lower() == 'a':
             # add product
-            pass
+            name = input('Product Name: ')
+            quantity_error = True
+            while quantity_error:
+                try:
+                    quantity = int(input('Quantity of the Product: '))
+                except ValueError:
+                    input('''
+            \n ****QuantitY ERRROR****
+            \rThe Quantity should be a number.
+            \rPress Enter to try again.
+            \r*************************''')
+                else:
+                    quantity_error = False
+
+            price_error = True
+            while price_error:
+                price = input('Price of the product (Ex: $5.44): ')
+                price_clean = clean_price(price)
+                if type(price_clean) == int:
+                    price_error = False
+            date_error = True
+            while date_error:
+                date_updated = input('Date_updated (Ex: 12/28/2018): ')
+                date_clean = clean_date(date_updated)
+                if type(date_clean) == datetime.date:
+                    date_error = False
+            new_product = Product(product_name=name, product_price=price_clean, product_quantity=quantity, date_updated=date_clean)
+            session.add(new_product)
+            session.commit()
+            print('\nProduct Successfully Added')
+            time.sleep(1.5)
 
         elif choice.lower() == 'v':
             id_options = []
@@ -116,10 +167,8 @@ def app():
 
 if __name__ == '__main__':
     Base.metadata.create_all(engine)
+    add_csv()
     app()
-    # clean_date('1/13/2018')
-    # add_csv()
 
     for product in session.query(Product):
         print(product)
-    # clean_price('$7.99')
