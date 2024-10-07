@@ -31,6 +31,31 @@ def clean_price(price_str):
     price_float = float(split_price[1])
     return int(price_float * 100)
 
+def clean_id(id_str, options):
+    try:
+        product_id = int(id_str)
+    except ValueError:
+        input('''
+            \n ****ID ERRROR****
+            \rThe ID should be a number.
+            \rPress Enter to try again.
+            \r*************************''')
+        return
+    else:
+        if product_id in options:
+            return product_id
+        else:
+            input(f'''
+            \n ****ID ERRROR****
+            \rOptions {options}.
+            \rPress Enter to try again.
+            \r*************************''')
+            return
+
+
+# def view_product():
+
+
 def menu():
     while True:
         print('''
@@ -57,8 +82,24 @@ def app():
             pass
 
         elif choice.lower() == 'v':
-            # view product
-            pass
+            id_options = []
+            for product in session.query(Product):
+                id_options.append(product.product_id)
+            id_error = True
+            while id_error:
+                id_choice = input(f'''
+                    \n ID Options : {id_options}
+                    \r Product id:  ''')
+                id_choice = clean_id(id_choice, id_options)
+                if type(id_choice) == int:
+                    id_error = False
+            the_product = session.query(Product).filter(Product.product_id==id_choice).first()
+            print(f'''
+                \n Product Name: {the_product.product_name}
+                \r Product Quantity: {the_product.product_quantity}
+                \r Product Price: {the_product.product_price} Cents
+                \r Product Updated Date: {the_product.date_updated}''')
+            input('\n Press Enter to return to the main menu')
         
         elif choice.lower() == 'b':
             # backup product
@@ -75,9 +116,9 @@ def app():
 
 if __name__ == '__main__':
     Base.metadata.create_all(engine)
-    # app()
+    app()
     # clean_date('1/13/2018')
-    add_csv()
+    # add_csv()
 
     for product in session.query(Product):
         print(product)
