@@ -76,6 +76,33 @@ def clean_id(id_str, options):
 
 # def view_product():
 
+def backup_csv():
+    backup_file = 'backup_inventory.csv'
+
+    try:
+
+        with open(backup_file, mode='w', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['product_name', 'product_price', 'product_quantity', 'date_updated']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+            writer.writeheader()
+
+            products = session.query(Product).all()
+
+            for product in products:
+                writer.writerow({
+                    'product_name': product.product_name,
+                    'product_price': f'${product.product_price / 100:.2f}',
+                    'product_quantity': product.product_quantity,
+                    'date_updated': product.date_updated.strftime('%m/%d/%Y')
+                })
+
+        print(f'Backup Created Successfully as {backup_file}')
+
+    except Exception as e:
+        print(f'Error creating backup: {e}')
+
+
 
 def menu():
     while True:
@@ -139,7 +166,7 @@ def app():
             id_error = True
             while id_error:
                 id_choice = input(f'''
-                    \n ID Options : {id_options}
+                    \r ID Options : {id_options}
                     \r Product id:  ''')
                 id_choice = clean_id(id_choice, id_options)
                 if type(id_choice) == int:
@@ -153,13 +180,14 @@ def app():
             input('\n Press Enter to return to the main menu')
         
         elif choice.lower() == 'b':
-            # backup product
+            backup_csv()
+            time.sleep(1.5)
             pass
         elif choice.lower() == 'e':
-            # exit
-            pass
+            print('\nGoodbye')
+            app_running = False
         else:
-            print('Goodbye')
+            print('\nGoodbye')
             app_running = False
 
 
@@ -170,5 +198,5 @@ if __name__ == '__main__':
     add_csv()
     app()
 
-    for product in session.query(Product):
-        print(product)
+    # for product in session.query(Product):
+    #     print(product)
