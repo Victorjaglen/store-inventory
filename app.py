@@ -3,22 +3,37 @@ import datetime
 import csv
 import time
 
-
+# Function to add data from a CSV file to the database
 def add_csv():
     with open('inventory.csv', encoding='utf-8') as csvfile:
         data = csv.reader(csvfile)
-        next(data)
+        next(data)  # Skip header row
         for row in data:
-            product_in_db = session.query(Product).filter(Product.product_name==row[0]).one_or_none()
-            if product_in_db == None:
-                name = row[0]
-                price = clean_price(row[1])
-                quantity = int(row[2])
-                date = clean_date(row[3])
+            name = row[0]
+            price = clean_price(row[1])
+            quantity = int(row[2])
+            date = clean_date(row[3])
+
+            # Check if the product is already in the database
+            product_in_db = session.query(Product).filter(Product.product_name == name).one_or_none()
+
+            # If the date is newer, update product details
+            if product_in_db:
+
+                if date > product_in_db.date_updated:
+                    product_in_db.product_price = price
+                    product_in_db.product_quantity = quantity
+                    product_in_db.date_updated = date
+                    print(f'Updated Product: {name}')
+
+            else:
+                # If product is not in the database, add it
                 new_product = Product(product_name=name, product_price=price, product_quantity=quantity, date_updated=date)
                 session.add(new_product)
-        session.commit()
 
+        session.commit()  # Save changes to the database
+
+# Function to clean and validate the date input
 def clean_date(date_str):
     try:
         split_date = date_str.split('/')
@@ -36,8 +51,8 @@ def clean_date(date_str):
         return
     else:
         return return_date
-    
 
+# Function to clean and convert price to an integer (cents)
 def clean_price(price_str):
     try:
         split_price = price_str.split('$')
@@ -52,6 +67,8 @@ def clean_price(price_str):
     else:
         return int(price_float * 100)
 
+
+# Function to clean and validate the product ID
 def clean_id(id_str, options):
     try:
         product_id = int(id_str)
@@ -68,14 +85,14 @@ def clean_id(id_str, options):
         else:
             input(f'''
             \n ****ID ERRROR****
+            \nThe ID does not exist 
             \rOptions {options}.
             \rPress Enter to try again.
             \r*************************''')
             return
 
 
-# def view_product():
-
+# Function to back up the product data to a CSV file
 def backup_csv():
     backup_file = 'backup_inventory.csv'
 
@@ -89,6 +106,7 @@ def backup_csv():
 
             products = session.query(Product).all()
 
+            # Write product details to CSV
             for product in products:
                 writer.writerow({
                     'product_name': product.product_name,
@@ -103,7 +121,7 @@ def backup_csv():
         print(f'Error creating backup: {e}')
 
 
-
+# Function to display the menu options
 def menu():
     while True:
         print('''
@@ -112,21 +130,22 @@ def menu():
 
               \rV - View the product
               \rA - Add a new product
-              \rB - Backup the database 
+              \rB - Backup the database
               \rE - Exit''')
-        choice = input('What would you like to do?: ')
+        choice = input('\nWhat would you like to do?: ')
         if choice.lower() in ['a', 'v', 'b', 'e']:
             return choice
         else:
             input('''\nPlease choose one of the options above:
                   \rPress Enter to try again''')
 
+# Main app function
 def app():
     app_running = True
     while app_running:
         choice = menu()
         if choice.lower() == 'a':
-            # add product
+            # Adding a new product
             name = input('Product Name: ')
             quantity_error = True
             while quantity_error:
@@ -141,12 +160,15 @@ def app():
                 else:
                     quantity_error = False
 
+            # Clean and validate price
             price_error = True
             while price_error:
                 price = input('Price of the product (Ex: $5.44): ')
                 price_clean = clean_price(price)
                 if type(price_clean) == int:
                     price_error = False
+
+            # Clean and validate date
             date_error = True
             while date_error:
                 date_updated = input('Date_updated (Ex: 12/28/2018): ')
@@ -154,23 +176,37 @@ def app():
                 if type(date_clean) == datetime.date:
                     date_error = False
             new_product = Product(product_name=name, product_price=price_clean, product_quantity=quantity, date_updated=date_clean)
-            session.add(new_product)
-            session.commit()
-            print('\nProduct Successfully Added')
+
+            # Check if product exists in the database
+            product_in_db = session.query(Product).filter(Product.product_name == name).one_or_none()
+
+            if product_in_db is None:
+                session.add(new_product)
+                print('\nProduct Successfully Added')
+            else:
+                product_in_db.product_price = price_clean
+                product_in_db.product_quantity = quantity
+                product_in_db.date_updated = date_clean
+                print('\nProduct Successfully Added')
+
+            session.commit()  # Save changes to the database
             time.sleep(1.5)
 
         elif choice.lower() == 'v':
+            # View a product
             id_options = []
             for product in session.query(Product):
                 id_options.append(product.product_id)
+            
             id_error = True
             while id_error:
                 id_choice = input(f'''
-                    \r ID Options : {id_options}
-                    \r Product id:  ''')
+                    \rID Options : {id_options}
+                    \rProduct id:  ''')
                 id_choice = clean_id(id_choice, id_options)
                 if type(id_choice) == int:
                     id_error = False
+
             the_product = session.query(Product).filter(Product.product_id==id_choice).first()
             print(f'''
                 \n Product Name: {the_product.product_name}
@@ -178,25 +214,20 @@ def app():
                 \r Product Price: {the_product.product_price} Cents
                 \r Product Updated Date: {the_product.date_updated}''')
             input('\n Press Enter to return to the main menu')
-        
+
         elif choice.lower() == 'b':
+            # Back up the database
             backup_csv()
             time.sleep(1.5)
-            pass
+
         elif choice.lower() == 'e':
+            # Exit the application
             print('\nGoodbye')
             app_running = False
-        else:
-            print('\nGoodbye')
-            app_running = False
 
 
-
-
+# Initialize database and run the application
 if __name__ == '__main__':
     Base.metadata.create_all(engine)
-    add_csv()
-    app()
-
-    # for product in session.query(Product):
-    #     print(product)
+    add_csv()  # Load initial CSV data
+    app()  # Start the application
